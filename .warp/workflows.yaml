@@ -1,0 +1,326 @@
+# Sarva - Warp Workflows Configuration
+# Place this file in: .warp/workflows.yaml
+
+workflows:
+  # Development Workflows
+  - name: "Start Full Dev Environment"
+    command: |
+      echo "🚀 Starting Sarva development environment..."
+      docker-compose up -d
+      sleep 5
+      npm run migrate
+      npm run dev
+    description: "Start all services and infrastructure for local development"
+    tags: ["dev", "startup"]
+
+  - name: "Quick Service Start"
+    command: |
+      echo "Select service to start:"
+      select service in "api-gateway" "auth-service" "messaging-service" "wallet-service" "marketplace-service" "all"; do
+        case $service in
+          "all") npm run dev; break;;
+          *) npm run dev:$service; break;;
+        esac
+      done
+    description: "Start individual service or all services"
+    tags: ["dev", "service"]
+
+  - name: "Fresh Database Reset"
+    command: |
+      echo "⚠️  Warning: This will reset all data!"
+      read -p "Continue? (y/N): " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        docker-compose down -v
+        docker-compose up -d postgres redis mongodb
+        sleep 5
+        npm run migrate
+        npm run seed
+        echo "✅ Database reset complete"
+      fi
+    description: "Reset database and seed with fresh data"
+    tags: ["db", "reset"]
+
+  # Testing Workflows
+  - name: "Run All Tests"
+    command: |
+      echo "🧪 Running complete test suite..."
+      npm run lint
+      npm run typecheck
+      npm run test:unit
+      npm run test:integration
+      npm run test:e2e
+      echo "✅ All tests complete!"
+    description: "Run linting, type checking, and all tests"
+    tags: ["test", "ci"]
+
+  - name: "Test Specific Service"
+    command: |
+      echo "Select service to test:"
+      select service in "auth" "messaging" "wallet" "marketplace" "ride" "food"; do
+        npm run test -- services/$service-service
+        break
+      done
+    description: "Run tests for a specific service"
+    tags: ["test", "service"]
+
+  - name: "Watch Mode Testing"
+    command: npm run test:watch
+    description: "Run tests in watch mode for active development"
+    tags: ["test", "watch"]
+
+  # Git Workflows
+  - name: "Create Feature Branch"
+    command: |
+      read -p "Enter Linear issue number (e.g., 123): " issue_num
+      read -p "Enter feature description (e.g., add-oauth): " feature_desc
+      branch_name="feature/SAR-${issue_num}-${feature_desc}"
+      git checkout develop
+      git pull origin develop
+      git checkout -b $branch_name
+      echo "✅ Created and switched to branch: $branch_name"
+    description: "Create a new feature branch from develop"
+    tags: ["git", "branch"]
+
+  - name: "Commit with Convention"
+    command: |
+      echo "Select commit type:"
+      select type in "feat" "fix" "docs" "style" "refactor" "perf" "test" "chore"; do
+        read -p "Enter scope (e.g., auth, wallet): " scope
+        read -p "Enter description: " desc
+        read -p "Enter Linear issue (e.g., SAR-123): " issue
+
+        git add .
+        git commit -m "$type($scope): $desc
+
+$issue"
+        echo "✅ Committed with message: $type($scope): $desc"
+        break
+      done
+    description: "Create conventional commit with Linear issue link"
+    tags: ["git", "commit"]
+
+  - name: "Sync with Upstream"
+    command: |
+      current_branch=$(git branch --show-current)
+      git checkout develop
+      git pull upstream develop
+      git push origin develop
+      git checkout $current_branch
+      git rebase develop
+      echo "✅ Synced with upstream and rebased current branch"
+    description: "Sync fork with upstream and rebase current branch"
+    tags: ["git", "sync"]
+
+  # Docker & Infrastructure
+  - name: "View Service Logs"
+    command: |
+      echo "Select service:"
+      select service in "all" "postgres" "redis" "mongodb" "rabbitmq" "api-gateway" "auth" "messaging"; do
+        if [ "$service" = "all" ]; then
+          docker-compose logs -f
+        else
+          docker-compose logs -f $service
+        fi
+        break
+      done
+    description: "View logs for specific service"
+    tags: ["docker", "logs"]
+
+  - name: "Restart Service"
+    command: |
+      echo "Select service to restart:"
+      select service in "all" "postgres" "redis" "mongodb" "rabbitmq"; do
+        if [ "$service" = "all" ]; then
+          docker-compose restart
+        else
+          docker-compose restart $service
+        fi
+        echo "✅ Restarted $service"
+        break
+      done
+    description: "Restart specific Docker service"
+    tags: ["docker", "restart"]
+
+  - name: "Clean Docker Resources"
+    command: |
+      echo "🧹 Cleaning Docker resources..."
+      docker-compose down
+      docker system prune -f
+      docker volume prune -f
+      echo "✅ Cleanup complete"
+    description: "Clean up Docker containers, images, and volumes"
+    tags: ["docker", "cleanup"]
+
+  # Database Operations
+  - name: "Create Migration"
+    command: |
+      read -p "Enter migration name: " migration_name
+      npm run migration:create $migration_name
+      echo "✅ Migration created"
+    description: "Create a new database migration"
+    tags: ["db", "migration"]
+
+  - name: "Run Migrations"
+    command: |
+      npm run migrate
+      echo "✅ Migrations applied"
+    description: "Apply pending database migrations"
+    tags: ["db", "migration"]
+
+  - name: "Rollback Migration"
+    command: |
+      read -p "How many migrations to rollback? (default: 1): " count
+      count=${count:-1}
+      npm run migrate:rollback -- --count=$count
+      echo "✅ Rolled back $count migration(s)"
+    description: "Rollback database migrations"
+    tags: ["db", "migration"]
+
+  - name: "Database Backup"
+    command: |
+      backup_file="backups/sarva-backup-$(date +%Y%m%d-%H%M%S).sql"
+      mkdir -p backups
+      docker exec sarva-postgres pg_dump -U sarva sarva_dev > $backup_file
+      echo "✅ Backup saved to: $backup_file"
+    description: "Create database backup"
+    tags: ["db", "backup"]
+
+  # Build & Deployment
+  - name: "Build All Services"
+    command: |
+      echo "🔨 Building all services..."
+      npm run build
+      echo "✅ Build complete"
+    description: "Build all services for production"
+    tags: ["build", "production"]
+
+  - name: "Deploy to Staging"
+    command: |
+      echo "🚀 Deploying to staging..."
+      git checkout develop
+      git pull origin develop
+      npm run test
+      npm run build
+      npm run deploy:staging
+      echo "✅ Deployed to staging: https://staging.sarva.app"
+    description: "Deploy current code to staging environment"
+    tags: ["deploy", "staging"]
+
+  - name: "Deploy to Production"
+    command: |
+      echo "⚠️  Production Deployment"
+      read -p "Enter version (e.g., 1.2.3): " version
+      read -p "Deploy version $version to production? (yes/no): " confirm
+      if [ "$confirm" = "yes" ]; then
+        git checkout main
+        git pull origin main
+        npm run test
+        npm run build
+        git tag -a "v$version" -m "Release v$version"
+        git push origin "v$version"
+        npm run deploy:production
+        echo "✅ Deployed v$version to production"
+      else
+        echo "❌ Deployment cancelled"
+      fi
+    description: "Deploy to production with version tagging"
+    tags: ["deploy", "production"]
+
+  # Code Quality
+  - name: "Lint & Fix"
+    command: |
+      echo "🔍 Running linters..."
+      npm run lint:fix
+      npm run format
+      echo "✅ Code formatted and linted"
+    description: "Run linters and auto-fix issues"
+    tags: ["lint", "format"]
+
+  - name: "Type Check All"
+    command: |
+      echo "🔍 Type checking..."
+      npm run typecheck
+      echo "✅ Type check complete"
+    description: "Run TypeScript type checking"
+    tags: ["typescript", "check"]
+
+  - name: "Security Audit"
+    command: |
+      echo "🔒 Running security audit..."
+      npm audit
+      docker run --rm -v $(pwd):/app aquasec/trivy fs /app
+      echo "✅ Security audit complete"
+    description: "Run npm audit and Trivy security scan"
+    tags: ["security", "audit"]
+
+  # Linear Integration
+  - name: "Open Current Issue in Linear"
+    command: |
+      branch=$(git branch --show-current)
+      issue=$(echo $branch | grep -oP 'SAR-\d+')
+      if [ -n "$issue" ]; then
+        echo "Opening $issue in Linear..."
+        open "https://linear.app/sarva/issue/$issue"
+      else
+        echo "❌ No Linear issue found in branch name"
+      fi
+    description: "Open the Linear issue associated with current branch"
+    tags: ["linear", "issue"]
+
+  - name: "List My Linear Issues"
+    command: |
+      # Requires Linear CLI or API key
+      echo "📋 Fetching your Linear issues..."
+      curl -X POST https://api.linear.app/graphql \
+        -H "Authorization: Bearer $LINEAR_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d '{"query":"{ issues(filter: { assignee: { id: { eq: \"me\" } } }) { nodes { identifier title state { name } } } }"}' \
+        | jq -r '.data.issues.nodes[] | "\(.identifier): \(.title) [\(.state.name)]"'
+    description: "List your assigned Linear issues"
+    tags: ["linear", "issues"]
+
+  # Project Management
+  - name: "Generate Changelog"
+    command: |
+      echo "📝 Generating changelog..."
+      git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0)..HEAD > CHANGELOG-draft.md
+      echo "✅ Changelog saved to CHANGELOG-draft.md"
+      cat CHANGELOG-draft.md
+    description: "Generate changelog from commits since last tag"
+    tags: ["changelog", "release"]
+
+  - name: "Project Status Summary"
+    command: |
+      echo "📊 Sarva Project Status"
+      echo "======================="
+      echo ""
+      echo "Git Branch: $(git branch --show-current)"
+      echo "Last Commit: $(git log -1 --pretty=format:'%h - %s')"
+      echo ""
+      echo "Services Running:"
+      docker-compose ps
+      echo ""
+      echo "Test Coverage:"
+      npm run test:coverage -- --silent | tail -n 10
+    description: "Display current project status summary"
+    tags: ["status", "info"]
+
+  # Performance
+  - name: "Performance Benchmark"
+    command: |
+      echo "⚡ Running performance benchmarks..."
+      npm run benchmark
+      echo "✅ Benchmarks complete"
+    description: "Run performance benchmarks"
+    tags: ["performance", "benchmark"]
+
+  - name: "Load Testing"
+    command: |
+      echo "Select service to test:"
+      select service in "api-gateway" "auth-service" "wallet-service"; do
+        k6 run tests/load/$service-load-test.js
+        break
+      done
+    description: "Run load tests on specific service"
+    tags: ["performance", "load-test"]
