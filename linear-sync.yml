@@ -1,0 +1,34 @@
+name: Linear Integration
+'on':
+  pull_request:
+    types:
+    - opened
+    - edited
+    - synchronize
+  push:
+    branches:
+    - main
+    - develop
+jobs:
+  linear-sync:
+    name: Sync with Linear
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Extract Linear issue ID
+      id: extract-issue
+      run: "\n                      if [[ \"${{ github.event_name }}\" == \"pull_request\"\
+        \ ]]; then\n                        ISSUE_ID=$(echo \"${{ github.event.pull_request.title\
+        \ }}\" | grep -oP 'SAR-\\d+' || echo \"\")\n                      else\n \
+        \                       ISSUE_ID=$(git log -1 --pretty=%B | grep -oP 'SAR-\\\
+        d+' || echo \"\")\n                      fi\n                      echo \"\
+        issue_id=$ISSUE_ID\" >> $GITHUB_OUTPUT\n                    "
+    - name: Update Linear issue
+      if: steps.extract-issue.outputs.issue_id != ''
+      uses: linear/linear-action@v1
+      with:
+        linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+        issue-id: ${{ steps.extract-issue.outputs.issue_id }}
+        state: In Progress
+        comment: 'PR opened: ${{ github.event.pull_request.html_url }}'

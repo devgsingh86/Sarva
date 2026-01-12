@@ -1,0 +1,89 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: sarva-postgres
+    environment:
+      POSTGRES_USER: sarva
+      POSTGRES_PASSWORD: sarva123
+      POSTGRES_DB: sarva_dev
+    ports:
+    - 5432:5432
+    volumes:
+    - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U sarva
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    container_name: sarva-redis
+    ports:
+    - 6379:6379
+    volumes:
+    - redis_data:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  mongodb:
+    image: mongo:7
+    container_name: sarva-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: sarva
+      MONGO_INITDB_ROOT_PASSWORD: sarva123
+    ports:
+    - 27017:27017
+    volumes:
+    - mongodb_data:/data/db
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: sarva-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: sarva
+      RABBITMQ_DEFAULT_PASS: sarva123
+    ports:
+    - 5672:5672
+    - 15672:15672
+    volumes:
+    - rabbitmq_data:/var/lib/rabbitmq
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: sarva-elasticsearch
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      xpack.security.enabled: 'false'
+    ports:
+    - 9200:9200
+    volumes:
+    - elasticsearch_data:/usr/share/elasticsearch/data
+  minio:
+    image: minio/minio
+    container_name: sarva-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: sarva
+      MINIO_ROOT_PASSWORD: sarva123456
+    ports:
+    - 9000:9000
+    - 9001:9001
+    volumes:
+    - minio_data:/data
+volumes:
+  postgres_data: null
+  redis_data: null
+  mongodb_data: null
+  rabbitmq_data: null
+  elasticsearch_data: null
+  minio_data: null
+networks:
+  default:
+    name: sarva-network
