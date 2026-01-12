@@ -9,39 +9,41 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
+    "dev": "echo 'Services will start here. Set up individual services first.'",
+    "dev:auth": "cd services/auth-service && npm run dev",
+    "dev:wallet": "cd services/wallet-service && npm run dev",
+    "dev:messaging": "cd services/messaging-service && npm run dev",
+    "dev:gateway": "cd services/api-gateway && npm run dev",
+    "test": "npm run test --workspaces",
     "test:unit": "jest --testPathPattern=\\.unit\\.test\\.ts$",
     "test:integration": "jest --testPathPattern=\\.integration\\.test\\.ts$",
-    "test:e2e": "playwright test",
-    "test:coverage": "jest --coverage",
-    "lint": "turbo run lint",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "typecheck": "turbo run typecheck",
-    "migrate": "turbo run migrate",
-    "migrate:rollback": "turbo run migrate:rollback",
-    "seed": "turbo run seed",
-    "deploy:staging": "./scripts/deploy.sh staging",
-    "deploy:production": "./scripts/deploy.sh production",
+    "migrate": "echo 'Migrations will run here'",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f"
   },
-  "devDependencies": {
-    "@types/node": "^20.10.0",
-    "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0",
-    "eslint": "^8.54.0",
-    "eslint-config-prettier": "^9.0.0",
-    "jest": "^29.7.0",
-    "prettier": "^3.1.0",
-    "turbo": "^1.11.0",
-    "typescript": "^5.3.0"
-  },
+  "keywords": [
+    "super-app",
+    "microservices",
+    "fintech"
+  ],
+  "author": "Sarva Team",
+  "license": "MIT",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.6",
+    "eslint": "^8.57.1",
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.11",
+    "prettier": "^3.7.4",
+    "ts-node": "^10.9.2",
+    "turbo": "^2.7.4",
+    "typescript": "^5.9.3"
   }
 }
