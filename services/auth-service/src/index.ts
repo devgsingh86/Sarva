@@ -6,7 +6,7 @@ import authRoutes from './routes/auth.routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8001;
+const PORT = 8001; // Hardcoded
 
 app.use(cors());
 app.use(express.json());

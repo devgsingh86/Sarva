@@ -1,12 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import walletRoutes from './routes/wallet.routes';
+import authRoutes from './routes/auth.routes';
 
 dotenv.config();
 
 const app = express();
-const PORT = 8002; // Hardcoded
+const PORT = process.env.PORT || 8001;
 
 app.use(cors());
 app.use(express.json());
@@ -14,14 +14,14 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
-    service: 'wallet-service',
+    service: 'auth-service',
     timestamp: new Date().toISOString(),
   });
 });
 
-app.use('/api/wallet', walletRoutes);
+app.use('/api/auth', authRoutes);
 
 app.listen(PORT, () => {
-  console.log(`💰 Wallet Service running on http://localhost:${PORT}`);
+  console.log(`🔐 Auth Service running on http://localhost:${PORT}`);
   console.log(`🏥 Health: http://localhost:${PORT}/health`);
 });
